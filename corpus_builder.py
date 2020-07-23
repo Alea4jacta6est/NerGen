@@ -4,54 +4,71 @@ nltk.download('wordnet')
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.corpus import stopwords
 from spacy.lang.en.stop_words import STOP_WORDS
+from string import ascii_letters
+from pathlib import Path
 import re
+
+STOPWORD_FILENAMES = {"en": "en_stopwords.txt",
+                      "zh": "zh_stopwords.txt",
+                      "fr": "fr_stopwords.txt"}
 
 
 class Stopwords:
-    def __init__(self, dir_="custom_stopwords"):
+    def __init__(self, lang, dir_="custom_stopwords"):
         self.dir_ = dir_
         self.spacy_stopwords = list(STOP_WORDS)
         self.nltk_stopwords = stopwords.words("english")
+        self.custom_stopwords_path = STOPWORD_FILENAMES[lang]
         self.custom_stopwords = []
         self.all_stopwords = self.get_all_stopwords()
 
-    def get_more_stopwords(self, filename):
-        file_path = f"{self.dir_}/{filename}"
+    def get_custom_stopwords(self):
+        file_path = f"{self.dir_}/{self.custom_stopwords_path}"
         with open(file_path) as file:
             self.custom_stopwords = file.read().split("\n")[:-1]
 
     def get_all_stopwords(self):
-        self.get_more_stopwords("stopwords.txt")
+        self.get_custom_stopwords()
         all_ = set(self.custom_stopwords +
                    self.spacy_stopwords +
                    self.nltk_stopwords)
         return list(all_)
 
 
-ALL_STOP_WORDS = Stopwords().all_stopwords
-
-
-def form_corpus(texts: list):
+def form_corpus(texts: list, lang: str):
     """
     Forming corpus based on texts and stopwords given
-    :param texts:
-    :return: corpus
+
+    Args:
+     texts: list
+     lang: str
+
+    Returns:
+     corpus: list of texts
     """
-    lem = WordNetLemmatizer()
+    ALL_STOP_WORDS = Stopwords(lang).all_stopwords
     corpus = []
-    texts_amount = len(texts)
-    for i in range(texts_amount):
-        # Remove punctuation
-        text = re.sub('[^a-zA-Z]', ' ', texts[i])
-        # Convert to lowercase
-        text = text.lower()
-        # Remove special characters and digits
-        text = re.sub("(\\d|\\W)+", " ", text)
-        # Convert to list from string
-        text = text.split()
-        # Lemmatize
-        text = [lem.lemmatize(word) for word in text
-                if word not in ALL_STOP_WORDS]
-        text = " ".join(text)
-        corpus.append(text)
+    if lang == "zh":
+        for i, text in enumerate(texts):
+            # Remove special characters and digits
+            text = re.sub("(\\d|\\W)+", "", text)
+            text_ = [char for char in text if char not in ALL_STOP_WORDS and char not in ascii_letters]
+            text_ = "".join(text_)
+            corpus.append(text_)
+    else:
+        lem = WordNetLemmatizer()
+        for i, text in enumerate(texts):
+            # Remove punctuation
+            text_ = re.sub('[^a-zA-Z]', ' ', text)
+            # Convert to lowercase
+            text_ = text_.lower()
+            # Remove special characters and digits
+            text_ = re.sub("(\\d|\\W)+", " ", text_)
+            # Convert to list from string
+            text_ = text_.split()
+            # Lemmatize
+            text_ = [lem.lemmatize(word) for word in text_
+                    if word not in ALL_STOP_WORDS]
+            text_ = " ".join(text_)
+            corpus.append(text_)
     return corpus
